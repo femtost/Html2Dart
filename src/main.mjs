@@ -102,11 +102,14 @@ function addMarker(dart, node) {
 // Process text
 function parseText(text) {
     text = text.trim();
+    var result;
 
     if (text.startsWith("$("))
-        return [NO_QUOTES, text.slice(2).replace(/\)$/, "").trim()];
+        result = [NO_QUOTES, text.slice(2).replace(/\)$/, "").trim()];
     else
-        return [WITH_QUOTES, text];
+        result = [WITH_QUOTES, text];
+
+    return result;
 }
 
 // Make colour
