@@ -52,6 +52,16 @@ async function fileExists(path) {
 
 var ____Dom____;
 
+// Get attribute
+function attr(node,attrName){
+    return node.getAttribute(attrName);
+}
+
+// Set attribute
+function setAttr(node,attrName,value){
+    node.setAttribute(attrName,value);
+}
+
 // Tag name to class name
 function tag2func(tagName) {
     var tokens = tagName.toLowerCase().trim().split("-");
@@ -329,7 +339,8 @@ function transformAttribute(node, attr, value) {
 function processAttributes(dom, node, cssRules, dart, depth) {
     const IGNORES = [
         "id", "class", "if", "foreach", "h2d-left", "h2d-top", "src", "h2d-text-overflow",
-        "h2d-overflow", "h2d-overflow-x", "h2d-overflow-y", "scroller", "no-wrap"
+        "h2d-overflow", "h2d-overflow-x", "h2d-overflow-y", "scroller", "no-wrap", 
+        "h2d-display", "h2d-flex-direction"
     ];
     const EXP_ATTRS = ["onclick", "oncontextmenu"];
     var attrs = [...node.getAttributeNames()];
@@ -379,20 +390,25 @@ function makeChildAttrLines(indent, childAttrs) {
 
 // Process HTML tag
 tagProcessors.HTML = function (dom, node, cssRules, dart, depth) {
+    var closeStr = [];
+    return closeStr.reverse().join("");
 }
-tagProcessors.HTMLtail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.HTMLtail = function (dom, node, cssRules, dart, depth, closeStr) {
 }
 
 // Process HEAD tag
 tagProcessors.HEAD = function (dom, node, cssRules, dart, depth) {
+    var closeStr = [];
+    return closeStr.reverse().join("");
 }
-tagProcessors.HEADtail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.HEADtail = function (dom, node, cssRules, dart, depth, closeStr) {
 }
 
 // Process BODY tag
 tagProcessors.BODY = function (dom, node, cssRules, dart, depth) {
     var func = node.getAttribute("func");
     var indent = node.indent;
+    var closeStr = [];
 
     // Top function 
     if (func != null) {
@@ -419,8 +435,9 @@ tagProcessors.BODY = function (dom, node, cssRules, dart, depth) {
         addMarker(dart, node);
         // dart.code += `${indent}// WRONG BODY TAG HERE`;
     }
+    return closeStr.reverse().join("");
 }
-tagProcessors.BODYtail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.BODYtail = function (dom, node, cssRules, dart, depth, closeStr) {
     var func = node.getAttribute("func");
     var indent = node.indent;
 
@@ -448,6 +465,7 @@ tagProcessors.BODYtail = function (dom, node, cssRules, dart, depth) {
 tagProcessors.DIV = function (dom, node, cssRules, dart, depth) {
     var func = node.getAttribute("func");
     var indent = node.indent;
+    var closeStr = [];
 
     // Top function 
     if (func != null) {
@@ -466,25 +484,41 @@ tagProcessors.DIV = function (dom, node, cssRules, dart, depth) {
 
     } else { // Regular div
         addMarker(dart, node);
-        let str;
+        let str="";
 
-        if (node.hasAttribute("h2d-width"))
-            str = `${indent}Container(\n`;
-        else
-            str = `${indent}Container(width:double.infinity,\n`;
-
+        if (attr(node,"h2d-display")=="flex" && attr(node,"h2d-flex-direction")=="row"){
+            str = `${indent}Row(\n`;
+            closeStr.push(")");
+        }else{
+            if (node.hasAttribute("h2d-width")){
+                str = `${indent}Container(\n`;
+                closeStr.push(")");
+            }
+            else{
+                str = `${indent}Container(width:double.infinity,\n`;
+                closeStr.push(")");
+            }
+        }
         dart.code += str;
         processAttributes(dom, node, cssRules, dart, depth);
 
-        if (node.hasAttribute("no-wrap"))
-            str = `${indent}${TAB}child:\n`;
-        else
-            str = `${indent}${TAB}child:Wrap(children:__flatten([\n`;
-
+        if (attr(node,"h2d-display")=="flex" && attr(node,"h2d-flex-direction")=="row"){
+            str = `${indent}${TAB}children:__flatten([\n`;
+            closeStr.push("])");
+        }else{
+            if (node.hasAttribute("no-wrap")){
+                str = `${indent}${TAB}child:\n`;
+            }
+            else{
+                str = `${indent}${TAB}child:Wrap(children:__flatten([\n`;
+                closeStr.push("]))");
+            }
+        }
         dart.code += str;
     }
+    return closeStr.reverse().join("");
 }
-tagProcessors.DIVtail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.DIVtail = function (dom, node, cssRules, dart, depth, closeStr) {
     var func = node.getAttribute("func");
     var indent = node.indent;
 
@@ -502,20 +536,14 @@ tagProcessors.DIVtail = function (dom, node, cssRules, dart, depth) {
             `}\n` +
             `// EOF\n`;
     } else { // Regular div
-        let str;
-
-        if (node.hasAttribute("no-wrap"))
-            str = `${indent})${comma(node)}\n`;
-        else
-            str = `${indent}])))${comma(node)}\n`;
-
-        dart.code += str;
+        dart.code += `${indent}${closeStr}${comma(node)}\n`;
     }
 }
 
 // Process BUTTON tag
 tagProcessors.BUTTON = function (dom, node, cssRules, dart, depth) {
     var indent = node.indent;
+    var closeStr = [];
 
     addMarker(dart, node);
     var str = `${indent}Container(\n`;
@@ -524,8 +552,10 @@ tagProcessors.BUTTON = function (dom, node, cssRules, dart, depth) {
     var childAttrLines = makeChildAttrLines(indent, childAttrs);
     var str = `${indent}${TAB}child: ElevatedButton(${childAttrLines}child: Wrap(children:__flatten([\n`;
     dart.code += str;
+
+    return closeStr.reverse().join("");
 }
-tagProcessors.BUTTONtail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.BUTTONtail = function (dom, node, cssRules, dart, depth, closeStr) {
     var indent = node.indent;
 
     var str = `${indent}]))))${comma(node)}\n`;
@@ -535,42 +565,45 @@ tagProcessors.BUTTONtail = function (dom, node, cssRules, dart, depth) {
 // Process SPAN tag
 tagProcessors.SPAN = function (dom, node, cssRules, dart, depth) {
     var indent = node.indent;
+    var closeStr = [];
 
     addMarker(dart, node);
     var str = `${indent}Container(\n`;
+    closeStr.push(")");
     dart.code += str;
     processAttributes(dom, node, cssRules, dart, depth);
     var str;
 
     if (node.hasAttribute("no-wrap"))
         str = `${indent}${TAB}child:\n`;
-    else
+    else{
         str = `${indent}${TAB}child: Wrap(children:__flatten([\n`;
-
+        closeStr.push("]))");
+    }
     dart.code += str;
+
+    return closeStr.reverse().join("");
 }
-tagProcessors.SPANtail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.SPANtail = function (dom, node, cssRules, dart, depth, closeStr) {
     var indent = node.indent;
-    var str;
-
-    if (node.hasAttribute("no-wrap"))
-        str = `${indent})${comma(node)}\n`;
-    else
-        str = `${indent}])))${comma(node)}\n`;
-
+    var str;    
+    str = `${indent}${closeStr}${comma(node)}\n`;
     dart.code += str;
 }
 
 // Process INPUT tag
 tagProcessors.INPUT = function (dom, node, cssRules, dart, depth) {
     var indent = node.indent;
+    var closeStr = [];
 
     addMarker(dart, node);
     var str = `${indent}TextField(\n`;
     dart.code += str;
     processAttributes(dom, node, cssRules, dart, depth);
+
+    return closeStr.reverse().join("");
 }
-tagProcessors.INPUTtail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.INPUTtail = function (dom, node, cssRules, dart, depth, closeStr) {
     var indent = node.indent;
 
     var str = `${indent})${comma(node)}\n`;
@@ -580,6 +613,7 @@ tagProcessors.INPUTtail = function (dom, node, cssRules, dart, depth) {
 // Process A tag
 tagProcessors.A = function (dom, node, cssRules, dart, depth) {
     var indent = node.indent;
+    var closeStr = [];
 
     addMarker(dart, node);
     var str = `${indent}TextButton(style:TextButton.styleFrom(minimumSize:Size(20,20)),\n`;
@@ -589,8 +623,9 @@ tagProcessors.A = function (dom, node, cssRules, dart, depth) {
 
     var str = `${indent}${TAB}child:\n`;
     dart.code += str;
+    return closeStr.reverse().join("");
 }
-tagProcessors.Atail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.Atail = function (dom, node, cssRules, dart, depth, closeStr) {
     var indent = node.indent;
 
     var str = `${indent})${comma(node)}\n`;
@@ -603,6 +638,7 @@ tagProcessors.IMG = function (dom, node, cssRules, dart, depth) {
     var src = node.getAttribute("src");
     var fallbacksrc = node.getAttribute("fallbacksrc"); // Always asset:
     var isAsset = false;
+    var closeStr = [];
 
     if (src.trim().toLowerCase().startsWith("asset:")) {
         src = src.slice("asset:".length);
@@ -640,8 +676,9 @@ tagProcessors.IMG = function (dom, node, cssRules, dart, depth) {
 
     dart.code += str;
     processAttributes(dom, node, cssRules, dart, depth);
+    return closeStr.reverse().join("");
 }
-tagProcessors.IMGtail = function (dom, node, cssRules, dart, depth) {
+tagProcessors.IMGtail = function (dom, node, cssRules, dart, depth, closeStr) {
     var indent = node.indent;
 
     let str = `${indent})${comma(node)}\n`;
@@ -810,10 +847,17 @@ function openOuterTag(dom, node, cssRules, dart, depth, outerTagList) {
             node.removeAttribute("h2d-width");
             node.removeAttribute("h2d-height");
 
+            // Scroll direction
+            var scrollProp = "";
+
+            if (attr(node,"h2d-display")=="flex" && attr(node,"h2d-flex-direction")=="row")
+                scrollProp = "scrollDirection: Axis.horizontal,";
+
+            // Outer tags
             dart.code +=
-                `${indent}Container(width:${wValue}, height:${hValue}, child:\n` +
-                `${indent}Scrollbar(thumbVisibility:true, interactive:true, controller:${scroller}, child:\n` +
-                `${indent}SingleChildScrollView(controller:${scroller}, child:\n`;
+            `${indent}Container(width:${wValue}, height:${hValue}, child:\n` +
+            `${indent}Scrollbar(thumbVisibility:true, interactive:true, controller:${scroller}, child:\n` +
+            `${indent}SingleChildScrollView(controller:${scroller},${scrollProp}child:\n`;
         }
     }
 }
@@ -898,6 +942,7 @@ function travelToEle(dom, node, cssRules, dart, depth) {
         var tailOfIfAndFor = "";
     }
     var outerTags = null;
+    var closeStr = "";
 
     if (node.nodeType == ELEMENT_NODE) {
         log(`${node.tagName}:${nodeLoc}`);
@@ -930,7 +975,7 @@ function travelToEle(dom, node, cssRules, dart, depth) {
             tailOfIfAndFor = processIfAndFor(dom, node, cssRules, dart, depth);
 
         if (typeof tagProcessors[node.tagName] == "function")
-            tagProcessors[node.tagName](dom, node, cssRules, dart, depth);
+            closeStr = tagProcessors[node.tagName](dom, node, cssRules, dart, depth);
     }
     else if (node.nodeType == TEXT_NODE)
         processTextNode(dom, node, cssRules, dart, depth);
@@ -944,7 +989,7 @@ function travelToEle(dom, node, cssRules, dart, depth) {
 
     if (node.nodeType == ELEMENT_NODE) {
         if (typeof tagProcessors[node.tagName + "tail"] == "function") {
-            tagProcessors[node.tagName + "tail"](dom, node, cssRules, dart, depth);
+            tagProcessors[node.tagName + "tail"](dom, node, cssRules, dart, depth,closeStr);
 
             if (havingLogicTail)
                 dart.code += `${indent}${tailOfIfAndFor}\n`;
