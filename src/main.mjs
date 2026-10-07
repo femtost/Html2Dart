@@ -23,6 +23,9 @@ var log = console.log;
 var keys = Object.keys;
 
 // Globals
+const FOR_CHILD = true;
+const NOT_FOR_CHILD = false;
+
 const NO_QUOTES = "no-quotes";
 const WITH_QUOTES = "with-quotes";
 const CHILD_ATTR = "child-attr";
@@ -189,6 +192,15 @@ function transformRightClick(node, attr, value) {
     return [false, attr, value];
 }
 
+// Transform 'onsubmit' attribute
+function transformSubmit(node, attr, value) {
+    if (node.tagName == "INPUT") {
+        return [NOT_FOR_CHILD, "onSubmitted", value];
+    }
+
+    return [false, attr, value];
+}
+
 // Make decoration prop for Container
 function makeContainerDeco(node, attr, value) {
     if (["DIV", "SPAN"].indexOf(node.tagName) == -1) {
@@ -294,14 +306,16 @@ function transformAttribute(node, attr, value) {
     };
     const NOQUOTE_ATTRS = [
         "h2d-width", "h2d-height", "h2d-background-color", "h2d-border-radius",
-        "h2d-padding", "controller"
+        "h2d-padding", "controller", "onsubmit"
     ];
     const NOQUOTE_PROPS = [
-        "onPressed", "decoration", "style", "controller", "onLongPress", "onTap"
+        "onPressed", "decoration", "style", "controller", "onLongPress", "onTap",
+        "onSubmitted"
     ];
     var attr2transform = {
         // Events
         "onclick": transformClick, "oncontextmenu": transformRightClick,
+        "onsubmit": transformSubmit,
         // HTML attributes
         "placeholder": makeInputDeco,
         // CSS props
