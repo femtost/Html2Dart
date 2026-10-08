@@ -147,7 +147,7 @@ function colorToFlutter(cssColor) {
     try {
         color = processColor(cssColor);
         color = color.startsWith("#") ?
-            `Color(0x${color.slice(1).toUpperCase()})`
+            `Color(0xFF${color.slice(1).toUpperCase()})`
             : `Colors.${color.toLowerCase()}`;
     } catch {
         color = "Colors.white";
