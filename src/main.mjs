@@ -516,6 +516,18 @@ tagProcessors.DIV = function (dom, node, cssRules, dart, depth) {
         dart.code += str;
         processAttributes(dom, node, cssRules, dart, depth);
 
+        if (attr(node,"h2d-overflow")=="auto"){
+            let wStr = attr(node,"h2d-width");
+            let hStr = attr(node,"h2d-height");
+
+            if (wStr!=null && hStr!=null){
+                let [quoteW,w] = parseText(wStr);
+                let [quoteH,h] = parseText(hStr);
+                if (quoteW==WITH_QUOTES) w = `"${w}"`;
+                if (quoteH==WITH_QUOTES) h = `"${h}"`;
+                dart.code += `${indent}${TAB}constraints:BoxConstraints(minWidth:${w}, minHeight:${h}),\n`;
+            }
+        }
         if (attr(node,"h2d-display")=="flex" && attr(node,"h2d-flex-direction")=="row"){
             str = `${indent}${TAB}children:__flatten([\n`;
             closeStr.push("])");
@@ -586,6 +598,19 @@ tagProcessors.SPAN = function (dom, node, cssRules, dart, depth) {
     closeStr.push(")");
     dart.code += str;
     processAttributes(dom, node, cssRules, dart, depth);
+
+    if (attr(node,"h2d-overflow")=="auto"){
+        let wStr = attr(node,"h2d-width");
+        let hStr = attr(node,"h2d-height");
+
+        if (wStr!=null && hStr!=null){
+            let [quoteW,w] = parseText(wStr);
+            let [quoteH,h] = parseText(hStr);
+            if (quoteW==WITH_QUOTES) w = `"${w}"`;
+            if (quoteH==WITH_QUOTES) h = `"${h}"`;
+            dart.code += `${indent}${TAB}constraints:BoxConstraints(minWidth:${w}, minHeight:${h}),\n`;
+        }
+    }
     var str;
 
     if (node.hasAttribute("no-wrap"))
@@ -858,8 +883,11 @@ function openOuterTag(dom, node, cssRules, dart, depth, outerTagList) {
             var [t1, wValue] = parseText(w);
             var [t2, hValue] = parseText(h);
             // Tag inside must autoexpand or no scrolling:
-            node.removeAttribute("h2d-width");
-            node.removeAttribute("h2d-height");
+            // Dont remove attr, need to use later
+            // node.removeAttribute("h2d-width");
+            // node.removeAttribute("h2d-height");
+            node.setAttribute("h2d-width-processed","yes");
+            node.setAttribute("h2d-height-processed","yes");
 
             // Scroll direction
             var scrollProp = "";
