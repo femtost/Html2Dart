@@ -616,8 +616,14 @@ tagProcessors.SPAN = function (dom, node, cssRules, dart, depth) {
     if (node.hasAttribute("no-wrap"))
         str = `${indent}${TAB}child:\n`;
     else{
-        str = `${indent}${TAB}child: Wrap(children:__flatten([\n`;
-        closeStr.push("]))");
+        if (node.children.length>0 && node.children[0].getAttribute("h2d-position")=="absolute"){
+            str = `${indent}${TAB}child:SizedBox.expand(child:Stack(children:__flatten([\n`;
+            closeStr.push("])))");
+        }
+        else{
+            str = `${indent}${TAB}child: Wrap(children:__flatten([\n`;
+            closeStr.push("]))");
+        }
     }
     dart.code += str;
 
@@ -796,7 +802,7 @@ function processForOnly(dom, node, cssRules, dart, depth) {
 
     if (outerTags != null) {
         openOuterTag(dom, node, cssRules, dart, depth, outerTags);
-        closing = ")".repeat(outerTags.length);
+        closing = node.closings.join("");
     }
     return `${closing}),`;
 }
@@ -820,10 +826,15 @@ function checkToAddOuterTag(node) {
 
     // Positioned (must be first to stay right below Stack)
     var posAttrs = ["h2d-left", "h2d-top", "h2d-right", "h2d-bottom"];
+    var pos = attr(node,"h2d-position");
 
     for (let at of posAttrs)
-        if (node.hasAttribute(at) && !outerTagList.includes("Positioned"))
+        if ((pos=="fixed" || pos=="absolute") && node.hasAttribute(at) 
+        && !outerTagList.includes("Positioned")){
             outerTagList.push("Positioned");
+            node.setAttribute("h2d-position-processed","yes");
+            break;
+        }
 
     // Secondary tap (rightclick)
     if (node.getAttribute("oncontextmenu") != null)
@@ -852,14 +863,24 @@ function openOuterTag(dom, node, cssRules, dart, depth, outerTagList) {
     var indent = node.indent;
     var [id, classes] = getNodeIdAndClasses(node);
     dart.code += `\n${indent}// ${node.tagName} #${id} .${classes}\n`;
+    node.closings = [];
 
     for (let outerTag of outerTagList) {
         // SelectionArea
         if (outerTag == "SelectionArea") {
             dart.code += `${indent}${outerTag}(child:\n`;
             node.setAttribute("h2d-user-select-processed","yes");
-        }
+            node.closings.push(")");
+        }        
         // Positioned
+        if (outerTag == "SizedBox.expand") {
+            dart.code += `${indent}${outerTag}(child:\n`;
+            node.closings.push(")");
+        }
+        if (outerTag == "Stack") {
+            dart.code += `${indent}${outerTag}(children:[\n`;
+            node.closings.push("])");
+        }
         if (outerTag == "Positioned") {
             var left = node.getAttribute("h2d-left");
             var top = node.getAttribute("h2d-top");
@@ -868,11 +889,13 @@ function openOuterTag(dom, node, cssRules, dart, depth, outerTagList) {
 
             dart.code += `${indent}${outerTag}(`;
             dart.code += `left:${leftValue}, top:${topValue}, child:\n`;
+            node.closings.push(")");
         }
         // GestureDetector
         if (outerTag == "GestureDetector") {
             var code = node.getAttribute("oncontextmenu");
             dart.code += `${indent}GestureDetector(onSecondaryTap:${code}, child:\n`;
+            node.closings.push(")");
         }
         // Scrollbar/SingleChildScrollView
         // Check Scrollbar only, skip SingleChildScrollView
@@ -900,6 +923,7 @@ function openOuterTag(dom, node, cssRules, dart, depth, outerTagList) {
             `${indent}Container(width:${wValue}, height:${hValue}, child:\n` +
             `${indent}Scrollbar(thumbVisibility:true, interactive:true, controller:${scroller}, child:\n` +
             `${indent}SingleChildScrollView(controller:${scroller},${scrollProp}child:\n`;
+            node.closings.push(")))");
         }
     }
 }
@@ -907,7 +931,7 @@ function openOuterTag(dom, node, cssRules, dart, depth, outerTagList) {
 // Close outer tags
 function closeOuterTag(dom, node, cssRules, dart, depth, outerTagList) {
     var indent = node.indent;
-    var closing = ")".repeat(outerTagList.length);
+    var closing = node.closings.join("");
     dart.code += `${indent}${closing},\n`;
 }
 
