@@ -987,8 +987,25 @@ function processDartClass(dom, node, cssRules, dart, depth) {
     dart.code += `${str}),\n`;
 }
 
+// Process inline style attribute
+function processStyleAttribute(node){
+    if (node.getAttribute==null) return;
+    if (attr(node,"style")==null) return;
+    var style = attr(node,"style");
+    var toks = style.split(";").filter(x=>x.trim().length>0);
+
+    for (let tok of toks){
+        let [left,right] = tok.split(":");
+        left = left.trim();
+        right = right.trim();
+        node.setAttribute("h2d-"+left, right);
+    }
+    node.setAttribute("style-processed","yes");
+}
+
 // Travel to element in dom
 function travelToEle(dom, node, cssRules, dart, depth) {
+    processStyleAttribute(node);
     var nodeLoc = dom.nodeLocation(node);
     nodeLoc = nodeLoc ? nodeLoc.startLine : "?";
     node.nodeLoc = nodeLoc;
