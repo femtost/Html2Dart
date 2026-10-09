@@ -202,7 +202,7 @@ function transformSubmit(node, attr, value) {
 }
 
 // Make decoration prop for Container
-function makeContainerDeco(node, attr, value) {
+function makeContainerDeco(node, attrName, value) {
     if (["DIV", "SPAN"].indexOf(node.tagName) == -1) {
         return [null, null, null];
     }
@@ -219,10 +219,37 @@ function makeContainerDeco(node, attr, value) {
         r = null;
     }
 
-    if (r != null)
-        var outValue = `BoxDecoration(color: ${color}, borderRadius: BorderRadius.only(topLeft: Radius.circular(${r}), topRight: Radius.circular(${r}), bottomRight: Radius.circular(${r}), bottomLeft: Radius.circular(${r})))`;
-    else
-        var outValue = `BoxDecoration(color: ${color}, borderRadius: BorderRadius.only(topLeft: Radius.circular(${rTL}), topRight: Radius.circular(${rTR}), bottomRight: Radius.circular(${rBR}), bottomLeft: Radius.circular(${rBL})))`;
+    // Image
+    var image = "";
+
+    if (attr(node,"h2d-background-image") != null){
+        let t = attr(node,"h2d-background-image").trim().replaceAll("\x20","");
+        let url = t.replace("url(","").replace(/\)$/,"");
+        let size = "BoxFit.none";
+
+        if (attr(node,"h2d-background-size") != null){
+            let t = attr(node,"h2d-background-size").trim();
+            if (t=="cover") size="BoxFit.cover";
+        }
+        if (url.startsWith("asset:")){
+            let path = url.replace("asset:","");
+            image = `image:DecorationImage(image:AssetImage("${path}"),fit:${size}),`;
+        }else{
+            image = `image:DecorationImage(image:NetworkImage("${url}"),fit:${size}),`;
+        }
+        node.setAttribute("h2d-background-image-processed","yes");
+        node.setAttribute("h2d-background-size-processed","yes");
+    }
+
+    // Currently requires border-radius to trigger background image above too
+    if (r != null){
+        // Same radius
+        var outValue = `BoxDecoration(color: ${color},${image}borderRadius: BorderRadius.only(topLeft: Radius.circular(${r}), topRight: Radius.circular(${r}), bottomRight: Radius.circular(${r}), bottomLeft: Radius.circular(${r})))`;
+    }
+    else{
+        // 4 radii
+        var outValue = `BoxDecoration(color: ${color},${image}borderRadius: BorderRadius.only(topLeft: Radius.circular(${rTL}), topRight: Radius.circular(${rTR}), bottomRight: Radius.circular(${rBR}), bottomLeft: Radius.circular(${rBL})))`;
+    }
 
     node.setAttribute("h2d-background-color-processed", "yes");
     node.setAttribute("h2d-border-radius-processed", "yes");
@@ -995,9 +1022,9 @@ function processStyleAttribute(node){
     var toks = style.split(";").filter(x=>x.trim().length>0);
 
     for (let tok of toks){
-        let [left,right] = tok.split(":");
-        left = left.trim();
-        right = right.trim();
+        let chunks = tok.split(":");
+        let left = chunks[0].trim();
+        let right = chunks.slice(1).join(":").trim();
         node.setAttribute("h2d-"+left, right);
     }
     node.setAttribute("style-processed","yes");
